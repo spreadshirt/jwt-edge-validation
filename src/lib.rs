@@ -21,6 +21,7 @@ const API_BASE_URL: &str = "https://httpbin.org";
 // head -c32 /dev/urandom | base64
 const HMAC_SECRET: &[u8; 44] = b"ZPM//uZwrUN85ogHI0JAb8K1SFtNw270W6wdU4Op1Wk=";
 
+#[derive(Debug)]
 enum HandlerError {
     Internal(Error),
     Send(Error),
@@ -199,6 +200,66 @@ mod tests {
         assert_eq!(resp.uri(), "https://httpbin.org/my/awesome/path");
         assert_eq!(resp.body().clone(), body);
         dbg!(resp.headers());
+    }
+
+    #[test]
+    fn test_authenticate() {
+        let h = Handler {
+            // Can't initialize KVStore but does not need it for the test, thus mock it.
+            kvs: unsafe { &mut ::std::mem::transmute::<(), KVStore>(()) },
+        };
+
+        // generated with jwt.io
+        let token = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.nJkjEH_2wFclNpjG4mem7xShvYDS9UB3zfHmQ93CNiQ";
+
+        let orig_req = Request::builder()
+            .method("GET")
+            .uri("https://api.spreadshirt.net/my/awesome/path")
+            .header("authorization", token)
+            .body(vec![])
+            .expect("failed to build request");
+        let res = h.authenticate(&orig_req);
+        assert_eq!(res.is_ok(), true);
+        let dec_payload =
+            base64::decode(&res.unwrap()).expect("failed to base64 decode JWT payload");
+
+        let expected = r#"{"sub":"1234567890","name":"John Doe","iat":1516239022}"#.as_bytes();
+        assert_eq!(dec_payload, expected);
+    }
+
+    #[test]
+    fn test_invalid_token() {
+        let h = Handler {
+            // Can't initialize KVStore but does not need it for the test, thus mock it.
+            kvs: unsafe { &mut ::std::mem::transmute::<(), KVStore>(()) },
+        };
+
+        let token = "Bearer something.another-thing.whatever";
+
+        let orig_req = Request::builder()
+            .method("GET")
+            .uri("https://api.spreadshirt.net/my/awesome/path")
+            .header("authorization", token)
+            .body(vec![])
+            .expect("failed to build request");
+        let res = h.authenticate(&orig_req);
+        assert_eq!(res.is_err(), true);
+    }
+
+    #[test]
+    fn test_missing_jwt() {
+        let h = Handler {
+            // Can't initialize KVStore but does not need it for the test, thus mock it.
+            kvs: unsafe { &mut ::std::mem::transmute::<(), KVStore>(()) },
+        };
+
+        let orig_req = Request::builder()
+            .method("GET")
+            .uri("https://api.spreadshirt.net/my/awesome/path")
+            .body(vec![])
+            .expect("failed to build request");
+        let res = h.authenticate(&orig_req);
+        assert_eq!(res.is_err(), true);
     }
 }
 
