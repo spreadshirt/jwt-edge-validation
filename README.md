@@ -1,5 +1,7 @@
 # Fastly Edge Computing
 
+[![Build Status](https://travis-ci.org/spreadshirt/jwt-edge-validation.svg?branch=master)](https://travis-ci.org/spreadshirt/jwt-edge-validation)
+
 This project is part of the _22. Innovation and Hacking Days_ and tries to explore what we can do with serverless computing on Fastly's edge nodes.
 Fastly provides some kind of web IDE that makes it pretty easy to deploy code to their edge nodes, the project is called [terrarium][2]
 It uses [lucet][3] as a compiler backend that translates the code, be it in Rust, Javascript or C to webassembly (WASM) which is then executed on their edge nodes.
